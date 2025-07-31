@@ -3,6 +3,7 @@
 # Script to download 1000 Genomes Project VCF files for chromosomes 1-22
 # Phase 3 data from the 20130502 release
 
+mkdir /home/ec2-user/imputationserver2/tests/data/refpanels/1000g
 mkdir /home/ec2-user/imputationserver2/tests/data/refpanels/1000g/bcf
 cd /home/ec2-user/imputationserver2/tests/data/refpanels/1000g/bcf
 
