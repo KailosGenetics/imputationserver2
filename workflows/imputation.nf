@@ -1,64 +1,46 @@
-include { MINIMAC4 } from '../modules/local/imputation/minimac4'
+include { BEAGLE_IMPUTATION } from '../modules/local/imputation/beagle_imputation'
 
 workflow IMPUTATION {
-
-    take: 
-    phased_ch 
-
+    take:
+    phased_ch
+    
     main:
-    if (params.refpanel.mapMinimac == null) { 
-        minimac_map = []
-    } else {
-        minimac_map = file(params.refpanel.mapMinimac, checkIfExists: true)
-    }
-
     chromosomes = Channel.of(1..22, 'X.nonPAR', 'X.PAR1', 'X.PAR2', 'MT')
-    minimac_m3vcf_ch = chromosomes
+    
+    beagle_reference_ch = chromosomes
         .map {
-            it -> 
-                def genotypes_file = file(PatternUtil.parse(params.refpanel.genotypes, [chr: it]))
-                    if(!genotypes_file.exists()){
-                        return null;
-                    }
-                return tuple(it.toString(),genotypes_file); 
+            it ->
+                def beagle_file = file(PatternUtil.parse(params.refpanel.refBeagle, [chr: it]))
+                if(!beagle_file.exists()){
+                    return null;
+                }
+                return tuple(it.toString(), beagle_file)
         }
 
-    phased_m3vcf_ch = phased_ch.combine(minimac_m3vcf_ch, by: 0)
-
-    MINIMAC4 ( 
-        phased_m3vcf_ch, 
-        minimac_map,
-        params.refpanel.build,        
-        params.imputation.window,
-        params.imputation.minimac_min_ratio,
-        params.imputation.min_r2,
-        params.imputation.decay,
-        params.imputation.diff_threshold,
-        params.imputation.prob_threshold,
-        params.imputation.prob_threshold_s1,
-        params.imputation.min_recom
-    )
-
-    imputed_chunks_modified = MINIMAC4.out.imputed_chunks.
-        map { 
-            tuple ->
-                if (tuple[0].startsWith('X.')){
-                    tuple[0] = 'X'
-                    tuple[3] = updateChrX(tuple[3]) 
-                    tuple[4] = updateChrX(tuple[4]) 
-                    tuple[5] = updateChrX(tuple[5]) 
+    beagle_map_ch = chromosomes
+        .map {
+            it ->
+                def beagle_map_file = file(PatternUtil.parse(params.refpanel.mapBeagle, [chr: it]))
+                if(!beagle_map_file.exists()){
+                    return null;
                 }
-                return tuple
-            }
+                return tuple(it.toString(), beagle_map_file)
+        }
 
-    emit: 
-    imputed_chunks = imputed_chunks_modified
-}
+    // Combine all channels properly
+    beagle_ref_map_ch = beagle_reference_ch.combine(beagle_map_ch, by: 0)
+    beagle_bcf_metafiles_ch = phased_ch.combine(beagle_ref_map_ch, by: 0)
 
-public static String updateChrX(Object value) {
-    //update value
-    String updadedValue=value.toString().replaceAll('PAR1','1').replaceAll('nonPAR','2').replaceAll('PAR2','3');
-    //rename file
-    file(value).renameTo(updadedValue) 
-    return updadedValue
+    BEAGLE_IMPUTATION(beagle_bcf_metafiles_ch)
+
+    // Transform output to match expected imputation format
+    imputed_chunks = BEAGLE_IMPUTATION.out.beagle_imputed_ch
+        .map { chr, start, end, phasing_status, vcf_file ->
+            // Return in the format expected by the pipeline: 
+            // tuple val(chr), val(start), val(end), file(dose_vcf), file(info), file(empirical)
+            tuple(chr, start, end, vcf_file, vcf_file, vcf_file)
+        }
+
+    emit:
+    imputed_chunks = imputed_chunks
 }

@@ -1,18 +1,16 @@
-process BEAGLE {
+process BEAGLE_IMPUTATION {
 
     label 'phasing'
     tag "${chunkfile}"
 
     input:
-    tuple val(chr), path(bcf), val(start), val(end), val(phasing_status), path(chunkfile), path(map_beagle)
+    tuple val(chr), val(start), val(end), val(phasing_status), path(chunkfile), path(bcf), path(map_beagle)
 
     output:
-    tuple val(chr), val(start), val(end), val(phasing_status), file("*.phased.vcf.gz"), emit: beagle_phased_ch
+    tuple val(chr), val(start), val(end), val(phasing_status), path("*.imputed.vcf.gz"), emit: beagle_imputed_ch
 
     script:
-    //define basename without ending (do not use simpleName due to X.*)
-    def chunkfile_name = chunkfile.toString().replaceAll('.vcf.gz', '')
-    // replace X.nonPAR etc with X for phasing
+    def chunkfile_name = chunkfile.toString().replaceAll('.phased.vcf.gz', '').replaceAll('.vcf.gz', '')
     def chr_cleaned = chr.startsWith('X.') ? 'X' : chr
     def chr_mapped = params.refpanel.build == 'hg38' ? 'chr' + chr_cleaned : chr_cleaned
     def phasing_start = start.toLong() - params.phasing.window
@@ -24,10 +22,12 @@ process BEAGLE {
     java -jar /usr/bin/beagle.18May20.d20.jar \\
         ref=${bcf} \\
         gt=${chunkfile} \\
-        out=${chunkfile_name}.phased \\
+        out=${chunkfile_name}.imputed \\
         nthreads=$used_threads \\
         chrom=${chr_mapped}:${phasing_start}-${phasing_end} \\
         map=${map_beagle} \\
-        impute=false
+        impute=true \\
+        gp=true \\
+        ap=true
     """
 }

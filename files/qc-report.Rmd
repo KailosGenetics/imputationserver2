@@ -75,8 +75,8 @@ kable(rbind(validation,qc))
 The plot shows the densities of frequencies falling into each part. The first 5000 points from areas of lowest regional densities will be plotted.
 
 ```{r echo=FALSE}
-if (params$allele_frequency_population != "off") {
-
+if (params$allele_frequency_population != "off" && params$maf_file != "" && file.exists(params$maf_file) && file.size(params$maf_file) > 0) {
+	
     data <- read.table(params$maf_file, header = TRUE, sep="\t")
     
     lm_eqn <- function(df){
@@ -100,30 +100,29 @@ if (params$allele_frequency_population != "off") {
 Markers where chisq is greater than 300. 
 
 ```{r echo=FALSE}
-
-if (params$allele_frequency_population != "off") {
-    
+```{r echo=FALSE}
+if (params$allele_frequency_population != "off" && params$maf_file != "" && file.exists(params$maf_file) && file.size(params$maf_file) > 0) {
     filtered_data <- data %>%
       filter(CHISQ > 300)
-
     chisq_length <- nrow(filtered_data)
     if(chisq_length > 0) {
-      cat("Total mismatches:", chisq_length, "\n")
+      cat("Total mismatches:", chisq_length, "
+")
     } else {
         cat("No mismatches detected.")
     }
-
     if (chisq_length > 0) {
         # Print the first 5000 mismatches
         for (i in 1:min(5000, chisq_length)) {
-            cat("Mismatched frequencies for '", filtered_data$ID[i], "' f[", filtered_data$REF[i], ",", filtered_data$ALT[i],"] = [", (1-filtered_data$AAF[i]), ",", filtered_data$AAF[i],"] vs [", (1-filtered_data$REFERENCE_AAF[i]), ",", filtered_data$REFERENCE_AAF[i],"], chisq ", filtered_data$CHISQ[i], "\n", sep = "")
+            cat("Mismatched frequencies for '", filtered_data$ID[i], "' f[", filtered_data$REF[i], ",", filtered_data$ALT[i],"] = [", (1-filtered_data$AAF[i]), ",", filtered_data$AAF[i],"] vs [", (1-filtered_data$REFERENCE_AAF[i]), ",", filtered_data$REFERENCE_AAF[i],"], chisq ", filtered_data$CHISQ[i], "
+", sep = "")
         }
         if (chisq_length > 5000) {
             cat("Report outputs only first 5000 mismatches.")
         }
     }
 } else {
-    cat("Allele Frequency Check is disabled.")
+    cat("Allele Frequency Check is disabled or MAF file is not available.")
 }
 ```
 

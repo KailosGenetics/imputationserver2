@@ -84,35 +84,28 @@ workflow {
     println "Welcome to ${params.service.name} (${workflow.manifest.version})"
 
     if (params.imputation.enabled){
-        println "DEBUG: Entered params.imputation.enabled block"
-        println "DEBUG: params.imputation.enabled = ${params.imputation.enabled}"
 
         INPUT_VALIDATION()
-        println "DEBUG: Called INPUT_VALIDATION()"
 
         QUALITY_CONTROL(
             INPUT_VALIDATION.out.validated_files,
             INPUT_VALIDATION.out.validation_report,
             site_files_ch.collect()
         )
-        println "DEBUG: Called QUALITY_CONTROL()"      
- 
-        qc_metafiles = QUALITY_CONTROL.out.qc_metafiles
-        println "DEBUG: Assigned qc_metafiles"
-
-        qc_metafiles.ifEmpty {
-            error "QC step failed"
-        }
-
+       
+       // check if QC chunks exist in case QC failed
+       QUALITY_CONTROL.out.qc_metafiles.ifEmpty {
+       error "QC step failed"
+       } 
 
         if (params.mode == 'imputation') {
 
-            phased_ch = qc_metafiles
+            phased_ch =  QUALITY_CONTROL.out.qc_metafiles
 
             if (phasing_engine != 'no_phasing') { 
 
                 PHASING(
-                    qc_metafiles
+                    QUALITY_CONTROL.out.qc_metafiles
                 )
 
                 phased_ch = PHASING.out.phased_ch
