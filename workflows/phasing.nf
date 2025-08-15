@@ -17,7 +17,7 @@ workflow PHASING {
             .map {
                 it -> 
                     def eagle_file = file(PatternUtil.parse(params.refpanel.refEagle, [chr: it]))
-                    def eagle_file_index = file(PatternUtil.parse(params.refpanel.refEagle + ".csi", [chr: it]))
+                    def eagle_file_index = file(PatternUtil.parse(params.refpanel.refEagle + ".tbi", [chr: it]))
                     if(!eagle_file.exists() || !eagle_file_index.exists()){
                         return null;
                     }
